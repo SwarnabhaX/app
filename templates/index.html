@@ -23,7 +23,7 @@
 
     <form method="POST">
         <label for="hosts">Host(s):</label>
-        <textarea id="hosts" name="hosts" required rows="4" placeholder="e.g., scanme.nmap.org, 192.168.1.1, 192.168.1.0/24">{{ host }}</textarea>
+        <textarea id="hosts" name="hosts" required rows="4" placeholder="e.g., scanme.nmap.org, 192.168.1.1, 192.168.1.0/24">{{ hosts_string }}</textarea>
         <br>
         <label for="ports">Port(s):</label>
         <input type="text" id="ports" name="ports" required value="{{ ports_string }}" placeholder="e.g., 80, 443, 1-1024">
@@ -42,16 +42,23 @@
     </form>
 
     {% if results is not none %}
-        <h2>Scan Results for {{ host }}</h2>
+        <h2>Scan Results</h2>
         {% if results %}
-            <p><strong>Open Ports:</strong></p>
-            <ul>
-                {% for port in results %}
-                    <li>{{ port }}</li>
-                {% endfor %}
-            </ul>
+            {% for host, open_ports in results.items() %}
+                <h3>{{ host }}</h3>
+                {% if open_ports %}
+                    <p><strong>Open Ports:</strong></p>
+                    <ul>
+                        {% for port in open_ports %}
+                            <li>{{ port }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No open ports found.</p>
+                {% endif %}
+            {% endfor %}
         {% else %}
-            <p>No open ports found.</p>
+            <p>No open ports found on any of the specified hosts.</p>
         {% endif %}
     {% endif %}
 </body>

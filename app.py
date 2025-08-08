@@ -87,7 +87,8 @@ def syn_scan_port(host, port, timeout=1):
         elif response.haslayer(ICMP):
             if int(response.getlayer(ICMP).type) == 3 and int(response.getlayer(ICMP).code) in [1, 2, 3, 9, 10, 13]:
                 return None # Filtered
-    except Exception:
+    except Exception as e:
+        print(f"[ERROR] Exception during SYN scan on {host}:{port} -> {e}")
         return None
     return None
 
@@ -107,7 +108,9 @@ def sweep_scan(hosts, ports, scan_type='tcp', concurrency=100, timeout=1):
             try:
                 if future.result() is not None:
                     results[host].append(port)
-            except Exception:
+            except Exception as e:
+                # This provides visibility into errors happening inside the threads
+                print(f"[ERROR] Exception for {host}:{port} -> {e}")
                 pass
 
     final_results = {host: sorted(open_ports) for host, open_ports in results.items() if open_ports}
@@ -130,15 +133,24 @@ def index():
         scan_type = request.form.get('scan_type', 'tcp')
 
         original_scan_type = scan_type
-        if scan_type == 'syn' and os.geteuid() != 0:
-            flash('SYN scan requires root privileges. Falling back to TCP Connect scan.')
-            scan_type = 'tcp'
+        if scan_type == 'syn':
+            is_admin = False
+            try:
+                if os.geteuid() == 0:
+                    is_admin = True
+            except AttributeError:
+                # os.geteuid doesn't exist on all platforms
+                pass
+
+            if not is_admin:
+                flash('SYN scan requires root privileges. Falling back to TCP Connect scan.')
+                scan_type = 'tcp'
 
         hosts_to_scan = parse_hosts(hosts_string)
         ports_to_scan = parse_ports(ports_string)
 
         if hosts_to_scan and ports_to_scan:
-             results = sweep_scan(hosts_to_scan, ports_to_scan, scan_type, concurrency, timeout)
+            results = sweep_scan(hosts_to_scan, ports_to_scan, scan_type, concurrency, timeout)
 
         return render_template('index.html', results=results, hosts_string=hosts_string, ports_string=ports_string, timeout=timeout, concurrency=concurrency, scan_type=original_scan_type)
 
